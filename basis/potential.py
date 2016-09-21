@@ -129,7 +129,10 @@ class Potential(object):
             domain, sfunc = spec.split('|')
             if "numpy" in sfunc and "numpy" not in self.params:
                 import numpy as np
-                self.params["numpy"] = np                
+                self.params["numpy"] = np
+            if "operator" in sfunc and "operator" not in self.params:
+                import operator
+                self.params["operator"] = operator
             xi, xf = eval(domain, self.params)
             function = eval(sfunc, self.params)
             self.regions[(xi, xf)] = function

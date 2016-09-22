@@ -5,6 +5,21 @@ import pytest
 from basis.potential import Potential
 import numpy as np
 
+def test_getattr():
+    """Tests the attribute re-routing to Potential.params.
+    """
+    pot = Potential("potentials/kp.cfg")
+    assert pot.w == pot.params["w"]
+
+    pot = Potential("potentials/bump.cfg")
+    assert pot.a == pot.params["a"]
+
+    pot = Potential("potentials/sho.cfg")
+    assert pot.shift == pot.params["shift"]
+
+    with pytest.raises(AttributeError):
+        pot.dummy
+
 def test_kp():
     """Tests the Kronig-Penney potential.
     """
@@ -19,8 +34,8 @@ def test_kp():
 
     for w, s, n, v0, R in params:
         pot.adjust(w=w, s=s, n=n, v0=v0)
-        xa = np.linspace(-n, n, R)
-        assert pot(-w*n) == v0
+        xa = np.linspace(0, w*n, R)
+        assert pot(0) == v0
         assert pot(w*n) == 0.
         assert pot((w-s)/2.) == v0
         assert len(pot(xa)) == R

@@ -3,3 +3,7 @@
 
 # 782
 Basis expansion solution to quantum 1D quantum potentials.
+
+# API Documentation
+
+Hosted on [github pages](https://rosenbrockc.github.io/basis/).

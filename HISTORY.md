@@ -1,5 +1,10 @@
 # Revision History
 
+## Revision 0.0.3
+
+- Added plot of band filling as the number of barriers is increased.
+- Fixed build failure because matplotlib wasn't specified as a requirement.
+
 ## Revision 0.0.2
 
 - Producing correct wave function and band plots for K-P.

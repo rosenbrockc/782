@@ -69,3 +69,16 @@ def test_envplot():
     argv = ["py.test", "-potential", "potentials/paper.cfg", "-envelope"]
     args = get_sargs(argv)
     run(args) == 0    
+
+def test_nbconv(tmpdir):
+    """Tests the band energy filling as a function of the number of
+    barriers.
+    """
+    plotfile = str(tmpdir.join("plots.pdf"))
+    argv = ["py.test", "-potential", "potentials/paper.cfg",
+            "-nbconv", "-action", "save", "-plotfile", plotfile]
+    args = get_sargs(argv)
+    run(args) == 0
+
+    from os import path
+    assert path.isfile(plotfile)   

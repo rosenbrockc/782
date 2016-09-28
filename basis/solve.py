@@ -52,7 +52,9 @@ script_options = {
                   help="Plot the probability distribution function, instead "
                   "of the wave function (which may be complex)."),
     "-potplot": dict(action="store_true",
-                     help="Plot the potential.")
+                     help="Plot the potential."),
+    "-nbconv": dict(action="store_true",
+                     help="Plot covergence of bands vs. number of barriers.")
     }
 """dict: default command-line arguments and their
     :meth:`argparse.ArgumentParser.add_argument` keyword arguments.
@@ -74,7 +76,7 @@ def _parser_options():
 
     return args
 
-def _eigsolve(args):
+def _eigsolve(args, **adjustment):
     """Constructs the :math:`H` matrix for the potential specified in
     the command-line arguments and then solves the eigensystem to
     produce the wavefunctions and energy levels.
@@ -86,6 +88,9 @@ def _eigsolve(args):
     from basis.evaluate import H
     from basis.potential import Potential
     V = Potential(args["potential"])
+    if len(adjustment) > 0:
+        V.adjust(**adjustment)
+        
     _H = H(V, args["N"])
 
     from numpy.linalg import eig
@@ -122,6 +127,31 @@ def _plotwaves(V, EC, args):
     elif not testmode: # pragma: no cover
         plt.show()
 
+def _plot_nbconv(args):
+    """Plots the energies as we increase the number of barriers in the
+    model. Reproduces figure 4 in the paper.
+    """
+    import matplotlib.pyplot as plt    
+    for nb in range(1, 11):
+        V, E, C = _eigsolve(args, nb=nb)
+        xs = [nb for i in range(3*nb)]
+        Es = sorted(E)
+        if len(xs) > len(Es): # pragma: no cover
+            #This is just a sanity check for the plotting library. It doesn't
+            #ever fire.
+            xs = xs[0:len(Es)]
+        plt.scatter(xs, Es[0:len(xs)], marker='s')
+
+    plt.xlabel("Number of barriers (cells)")
+    plt.ylabel("Energy")
+    plt.xlim((0,11))
+    plt.ylim((0,100))
+        
+    if "save" in args["action"]:
+        plt.savefig(args["plotfile"])
+    elif not testmode: # pragma: no cover
+        plt.show()
+        
 def _plot_bands(V, EC, args):
     """Plots the first few bands for the potential as a function of :math:`k`.
     """
@@ -157,7 +187,7 @@ def run(args):
     from operator import itemgetter
     EC = list(sorted(zip(E, C.T), key=itemgetter(0)))
     if ("save" in args["action"] and not
-        (args["potplot"] or args["bands"])):
+        (args["potplot"] or args["bands"] or args["nbconv"])):
         #Write the eigenvalues and vectors to file; for this project,
         #`numpy.savetxt` is probably the most useful for
         #cross-compatibility with Mathematica, etc.
@@ -167,10 +197,13 @@ def run(args):
 
     if args["potplot"]:
         V.plot(0, V.L, 1000)
-    elif args["plot"] and not args["bands"]:
+    elif (args["plot"] and not
+          (args["bands"] or args["nbconv"])):
         _plotwaves(V, EC, args)
     elif args["bands"]:
         _plot_bands(V, EC, args)
+    elif args["nbconv"]:
+        _plot_nbconv(args)
         
 if __name__ == '__main__': # pragma: no cover
     run(_parser_options())

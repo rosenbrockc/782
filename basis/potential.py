@@ -84,12 +84,14 @@ class Potential(object):
         #new Potential instance?
         pass
         
-    def _parse_params(self):
+    def _parse_params(self, exclude=None):
         """Extracts the potential parameters from the specified config
         parser.
         """
         if self.parser.has_section("parameters"):
             for param, svalue in self.parser.items("parameters"):
+                if exclude is not None and param in exclude:
+                    continue
                 self.params[param] = eval(svalue, self.params)
 
     def plot(self, xi, xf, resolution=100, ylim=None):
@@ -139,6 +141,11 @@ class Potential(object):
             else:
                 wmsg = "'{}' is not a valid parameter for '{}'."
                 msg.warn(wmsg.format(k, self.filepath))
+
+        #If any of the other parameters depend on updated values, we
+        #need to re-evaluate those.
+        self._parse_params(list(kwargs.keys()))
+                
         self._parse_regions()
 
     def _parse_regions(self):

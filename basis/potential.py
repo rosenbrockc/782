@@ -39,8 +39,8 @@ class Potential(object):
         self._parse_config()
 
     def __getattr__(self, attr):
-        if attr in self.params:
-            return self.params[attr]
+        if attr.lower() in self.params:
+            return self.params[attr.lower()]
         else:
             emsg = "{} is not an attribute of Potential objects."
             raise AttributeError(emsg.format(attr))            
@@ -55,7 +55,7 @@ class Potential(object):
             numpy.ndarray or float: potential evaluated at `value`.
         
         Raises:
-            ValueError: if the argument is not as `int` or `float`.
+            ValueError: if the argument is not an `int` or `float`.
         """
         if isinstance(value, list) or isinstance(value, np.ndarray):
             return np.array(list(map(self, value)))
@@ -90,7 +90,7 @@ class Potential(object):
         """
         if self.parser.has_section("parameters"):
             for param, svalue in self.parser.items("parameters"):
-                self.params[param] = eval(svalue)
+                self.params[param] = eval(svalue, self.params)
 
     def plot(self, xi, xf, resolution=100, ylim=None):
         """Plots the potential between the specified values.
@@ -105,7 +105,18 @@ class Potential(object):
             plt.ylim(ylim)
 
         plt.show()
-                
+
+    def _check_imports(self, sfunc):
+        """Makes sure that if sfunc uses `numpy`, `operator` or other
+        supported imports, that those are present in :attr:`params`.
+        """
+        supported = ["numpy", "operator"]
+        for package in supported:
+            if package in sfunc and package not in self.params:
+                from importlib import import_module
+                packinst = import_module(package)
+                self.params[package] = packinst
+        
     def adjust(self, **kwargs):
         """Adjusts the paramters of the potential.
 
@@ -117,9 +128,14 @@ class Potential(object):
             the potential config file, the update is ignored. A warning is
             printed that can be seen if verbosity is enabled.
         """
+        from six import string_types
         for k, v in kwargs.items():
             if k in self.params:
-                self.params[k] = v
+                if isinstance(v, string_types):
+                    self._check_imports(v)
+                    self.params[k] = eval(v, self.params)
+                else:
+                    self.params[k] = v
             else:
                 wmsg = "'{}' is not a valid parameter for '{}'."
                 msg.warn(wmsg.format(k, self.filepath))
@@ -134,12 +150,7 @@ class Potential(object):
         
         for i, spec in self.parser.items("regions"):
             domain, sfunc = spec.split('|')
-            if "numpy" in sfunc and "numpy" not in self.params:
-                import numpy as np
-                self.params["numpy"] = np
-            if "operator" in sfunc and "operator" not in self.params:
-                import operator
-                self.params["operator"] = operator
+            self._check_imports(sfunc)
             xi, xf = eval(domain, self.params)
             function = eval(sfunc, self.params)
             self.regions[(xi, xf)] = function

@@ -1,5 +1,6 @@
 #!/usr/bin/python
 from basis import msg
+from basis.base import testmode
 def examples():
     """Prints examples of using the script to the console using colored output.
     """
@@ -29,15 +30,29 @@ def examples():
     msg.example(script, explain, contents, required, output, outputfmt, details)
 
 script_options = {
-    "N": dict(default=100, type=int,
+    "-N": dict(default=100, type=int,
               help=("Specifies how many basis functions to use in the expansion "
                     "solution.")),
-    "-plot": dict(action="store_true",
-                  help=("Plots the solution.")),
+    "-plot": dict(nargs="*", type=int, default=[0],
+                  help=("Plots the wave functions; basis functions with "
+                        "indices in this list will be plotted, or all will "
+                        "be plotted if none are specified.")),
     "-potential": dict(help="Path to the file that has the potential "
                        "parameters."),
-    "-outfile": dict(default="output.dat",
-                     help="Override the default output file name.")
+    "-outfile": dict(default="output-{}.dat",
+                     help=("Override the default output file name.")),
+    "-envelope": dict(action="store_true",
+                      help=("When specified, the envelope function for a given "
+                            "wave function will be included in plots.")),
+    "-plotfile": dict(default="plot.pdf",
+                      help="Override the default file name for saving plots."),
+    "-bands": dict(action="store_true",
+                   help="Plot/save the bands as a function of wave number `k`."),
+    "-prob": dict(action="store_true",
+                  help="Plot the probability distribution function, instead "
+                  "of the wave function (which may be complex)."),
+    "-potplot": dict(action="store_true",
+                     help="Plot the potential.")
     }
 """dict: default command-line arguments and their
     :meth:`argparse.ArgumentParser.add_argument` keyword arguments.
@@ -59,8 +74,103 @@ def _parser_options():
 
     return args
 
-def run(args):
-    return 0
+def _eigsolve(args):
+    """Constructs the :math:`H` matrix for the potential specified in
+    the command-line arguments and then solves the eigensystem to
+    produce the wavefunctions and energy levels.
 
+    Returns:
+        (tuple): of eigenvalues and eigenvectors
+          (:class:`numpy.ndarray`).
+    """
+    from basis.evaluate import H
+    from basis.potential import Potential
+    V = Potential(args["potential"])
+    _H = H(V, args["N"])
+
+    from numpy.linalg import eig
+    return (V, ) + eig(_H)
+
+def _plotwaves(V, EC, args):
+    """Plots the wave functions for the solutions with the specified indices.
+    
+    Args:
+        EC (list): of tuples (En, Cn) where `En` is the eigenvalue and `Cn` is
+        the corresponding eigenvector (:class:`numpy.ndarray`).
+        args (dict): parsed command-line arguments.
+        indices (list): 
+    """
+    import matplotlib.pyplot as plt
+    import numpy as np
+    #We use the parameters from the potential to decide what the x-values will
+    #look like. Then we evaluate the basis functions for the y-values.
+    from basis.evaluate import wave
+    from basis.utility import colorspace
+    
+    x = np.linspace(0, V.L, V.nb*10)
+    cycols = colorspace(len(args["plot"]))
+    for n in args["plot"]:
+        wavefun = wave(V, EC[n][1], args["prob"])
+        col = next(cycols)
+        plt.plot(x, wavefun(x), color=col)
+        if args["envelope"]:
+            env = np.sin((n+1)*np.pi*x/V.L)
+            plt.plot(x, env, color=col, linestyle="dashed")
+
+    if "save" in args["action"]:
+        plt.savefig(args["plotfile"])
+    elif not testmode: # pragma: no cover
+        plt.show()
+
+def _plot_bands(V, EC, args):
+    """Plots the first few bands for the potential as a function of :math:`k`.
+    """
+    import matplotlib.pyplot as plt
+    import numpy as np
+    from operator import itemgetter
+    k = np.linspace(0, 3, 30)
+    E = np.array(list(map(itemgetter(0), EC)))
+    plt.figure()
+    plt.scatter(k[0:29], E[0:29]/np.pi**2, c='k', marker='o', label="Matrix method")
+    for i in range(3):
+        plt.plot(k[10*i:10*(i+1)-1], E[10*i:10*(i+1)-1]/np.pi**2,
+                 c='r', label="Analytic Solution" if i== 0 else None)
+    plt.plot(k, k**2, 'b--', label="Infinite square well")
+    plt.xlabel("$k/\pi$")
+    plt.ylabel("$E_n/\pi^2$")
+    plt.title("Kronig-Penney Band Plot")
+    plt.legend(loc=2)
+    plt.xlim((-0.1, 3.))
+    plt.ylim((0., 10.))
+
+    if "save" in args["action"]:
+        plt.savefig(args["plotfile"])
+    elif not testmode: # pragma: no cover
+        plt.show()
+        
+def run(args):
+    """Runs the basis expansion solver for the specified potential.
+    """
+    V, E, C = _eigsolve(args)
+    #We need to sort the eigenvalues and vectors to get the lowest energy ones
+    #first.
+    from operator import itemgetter
+    EC = list(sorted(zip(E, C.T), key=itemgetter(0)))
+    if ("save" in args["action"] and not
+        (args["potplot"] or args["bands"])):
+        #Write the eigenvalues and vectors to file; for this project,
+        #`numpy.savetxt` is probably the most useful for
+        #cross-compatibility with Mathematica, etc.
+        from numpy import savetxt
+        savetxt(args["outfile"].format("E"), E)
+        savetxt(args["outfile"].format("C"), C)
+
+    if args["potplot"]:
+        V.plot(0, V.L, 1000)
+    elif args["plot"] and not args["bands"]:
+        _plotwaves(V, EC, args)
+    elif args["bands"]:
+        _plot_bands(V, EC, args)
+        
 if __name__ == '__main__': # pragma: no cover
     run(_parser_options())

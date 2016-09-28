@@ -83,3 +83,19 @@ def test_bump():
         assert pot(a) == 0.
         with pytest.raises(ValueError):
             pot("a")
+
+def test_adjust():
+    """Tests adjusting a potential using an expression instead of a
+    constant. Also tests the warning when attempting to adjust a
+    non-existent parameter.
+    """
+    pot = Potential("potentials/bump.cfg")
+    pot.adjust(a="w*numpy.sqrt(v0)")
+    pot.adjust(dummy=0.1)
+            
+def test_incorrect():
+    """Tests execution of warning messages for incorrectly configured
+    potential files.
+    """
+    with pytest.raises(ValueError):
+        V = Potential("potentials/wrong.cfg")

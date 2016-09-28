@@ -18,7 +18,7 @@ except ImportError:
 
 from os import path
 setup(name='basis',
-      version='0.0.1',
+      version='0.0.2',
       description='Basis expansion for 1D quantum potentials.',
       long_description= "" if not path.isfile("README.md") else read_md('README.md'),
       author='Conrad W Rosenbrock',

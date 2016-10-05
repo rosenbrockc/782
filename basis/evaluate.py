@@ -23,7 +23,7 @@ def wave(V, Cn, prob=False):
           array-valued arguments).
     """
     if prob:
-        return lambda x: sum([np.abs(c)**2*np.sin((n+1)*np.pi*x/V.L)
+        return lambda x: sum([np.abs(c*np.sin((n+1)*np.pi*x/V.L))**2
                               for (n, c) in enumerate(Cn)])
     else:
         return lambda x: sum([c*np.sin((n+1)*np.pi*x/V.L)

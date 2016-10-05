@@ -112,7 +112,7 @@ def _plotwaves(V, EC, args):
     from basis.evaluate import wave
     from basis.utility import colorspace
     
-    x = np.linspace(0, V.L, V.nb*10)
+    x = np.linspace(0, V.L, V.nb*25)
     cycols = colorspace(len(args["plot"]))
     for n in args["plot"]:
         wavefun = wave(V, EC[n][1], args["prob"])
@@ -120,6 +120,8 @@ def _plotwaves(V, EC, args):
         plt.plot(x, wavefun(x), color=col)
         if args["envelope"]:
             env = np.sin((n+1)*np.pi*x/V.L)
+            if args["prob"]:
+                env = abs(env)
             plt.plot(x, env, color=col, linestyle="dashed")
 
     if "save" in args["action"]:
@@ -158,20 +160,22 @@ def _plot_bands(V, EC, args):
     import matplotlib.pyplot as plt
     import numpy as np
     from operator import itemgetter
-    k = np.linspace(0, 3, 30)
+    NB=30
+    k = np.linspace(0, NB//V.nb, NB)
     E = np.array(list(map(itemgetter(0), EC)))
     plt.figure()
-    plt.scatter(k[0:29], E[0:29]/np.pi**2, c='k', marker='o', label="Matrix method")
-    for i in range(3):
-        plt.plot(k[10*i:10*(i+1)-1], E[10*i:10*(i+1)-1]/np.pi**2,
+    plt.scatter(k[0:NB-1], E[0:NB-1]/np.pi**2, c='k', marker='o', label="Matrix method")
+    for i in range(1, 4):
+        analytic = np.loadtxt("analytic/KP.bands.{}".format(i))
+        plt.plot(analytic[:,0], analytic[:,1],
                  c='r', label="Analytic Solution" if i== 0 else None)
     plt.plot(k, k**2, 'b--', label="Infinite square well")
     plt.xlabel("$k/\pi$")
     plt.ylabel("$E_n/\pi^2$")
     plt.title("Kronig-Penney Band Plot")
     plt.legend(loc=2)
-    plt.xlim((-0.1, 3.))
-    plt.ylim((0., 10.))
+    plt.xlim((-0.1, NB//V.nb))
+    plt.ylim((0., NB/2))
 
     if "save" in args["action"]:
         plt.savefig(args["plotfile"])

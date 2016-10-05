@@ -1,5 +1,9 @@
 # Revision History
 
+## Revision 0.0.4
+
+- Added analytical (still incorrect) solution to KP bands.
+
 ## Revision 0.0.3
 
 - Added plot of band filling as the number of barriers is increased.
